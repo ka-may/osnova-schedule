@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0B0C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF7A1A'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-size='26' font-weight='800' fill='%230B0B0C'%3E%D0%90%D0%A1%3C/text%3E%3C/svg%3E">
+<title>Расписание «Основа»</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: одно приложение, четыре экрана (заставка, школа, вход, моё) + админка; телефон — главный формат, на широком экране сетка растягивается на всю ширину */
+:root {
+  --bg: #0B0B0C; --surface: #141312; --raised: #1A1918; --pressed: #34302C;
+  --line: #1F1D1B; --line-2: #2A2826; --line-3: #3A3632;
+  --fg: #F2F0EC; --fg-2: #E2DDD5; --muted: #A8A29A; --muted-2: #8C867E;
+  --accent: #FF7A1A; --accent-ink: #0B0B0C; --accent-bg: rgba(255,122,26,.14); --accent-line: rgba(255,122,26,.38); --accent-solid: rgba(255,122,26,.72);
+  --group: #3A3632; --ok: #6FD3A0; --ok-bg: rgba(48,164,108,.16); --warn: #FFB27A; --bad: #FF8A8E; --bad-bg: rgba(229,72,77,.16); --sun: #F07C80;
+  --font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input { font-family: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+.view { height: 100%; display: flex; flex-direction: column; box-sizing: border-box; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1440px; margin: 0 auto; }
+.narrow { max-width: 460px; }
+
+.logo { width: 40px; height: 40px; flex: none; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+.logo.lg { width: 96px; height: 96px; border-radius: 24px; font-size: 36px; }
+.logo.md { width: 56px; height: 56px; border-radius: 14px; font-size: 20px; }
+.btn { height: 56px; border-radius: 16px; border: 1px solid transparent; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; text-decoration: none; width: 100%; box-sizing: border-box; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.secondary { background: var(--surface); color: var(--fg); border-color: var(--line-3); }
+.icon-btn { width: 44px; height: 44px; flex: none; border: 0; border-radius: 12px; background: var(--raised); color: var(--fg); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; text-decoration: none; }
+.pill-btn { height: 44px; flex: none; padding: 0 12px; border: 0; border-radius: 12px; background: var(--raised); color: var(--fg); display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.back { align-self: flex-start; height: 44px; display: flex; align-items: center; gap: 6px; color: #C9C2B8; text-decoration: none; font-size: 14px; font-weight: 600; background: none; border: 0; padding: 0; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.field input { height: 56px; box-sizing: border-box; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line-3); background: var(--surface); color: var(--fg); font-size: 17px; font-weight: 600; }
+.field input:focus { border-color: var(--accent); outline: none; }
+.err { color: var(--bad); font-size: 13px; font-weight: 600; min-height: 18px; }
+.hint { padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px dashed var(--line-3); color: var(--muted); font-size: 13px; line-height: 1.45; }
+.hint b { color: var(--fg); }
+
+/* Заставка */
+.splash { align-items: center; padding-block: 64px 48px; }
+.splash-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.splash h1 { margin: 8px 0 0; font-size: 28px; font-weight: 700; line-height: 1.2; text-wrap: balance; }
+.loader { width: 160px; height: 4px; border-radius: 2px; background: var(--line-2); overflow: hidden; }
+.loader i { display: block; height: 100%; width: 30%; background: var(--accent); transition: width .9s ease; }
+.splash-foot { width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+
+/* Расписание школы */
+.top { display: flex; align-items: center; gap: 12px; padding-block: 16px 12px; }
+.brand { flex: 1; min-width: 0; }
+.brand-name { font-size: 18px; font-weight: 700; }
+.brand-sub { font-size: 12px; color: var(--muted); }
+.chips, .days { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+.chips::-webkit-scrollbar, .days::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--line-2); background: var(--surface); color: var(--fg-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.days { gap: 6px; padding-top: 12px; }
+.day { flex: none; width: 52px; height: 56px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--fg-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.day small { font-size: 11px; font-weight: 600; color: var(--muted-2); }
+.day small.sun { color: var(--sun); }
+.day b { font-size: 17px; font-weight: 700; }
+.day.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.day.on small { color: var(--accent-ink); }
+.controls { display: flex; align-items: center; gap: 8px; padding-top: 12px; }
+.seg { display: flex; padding: 3px; border-radius: 12px; background: var(--raised); }
+.seg button { height: 38px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.seg button.on { background: var(--pressed); color: var(--fg); }
+.zoom { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.zoom .icon-btn { width: 40px; }
+.zoom-level { font-size: 12px; color: var(--muted-2); min-width: 64px; text-align: right; }
+.status { display: flex; align-items: center; gap: 8px; padding-block: 12px; min-height: 32px; font-size: 12px; color: var(--muted); }
+.status .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); flex: none; }
+.focus-chip { height: 32px; padding: 0 10px; border: 1px solid var(--line-3); border-radius: 16px; background: var(--surface); color: var(--fg); font-size: 12px; font-weight: 600; flex: none; }
+
+.grid-wrap { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px 12px 0 0; overscroll-behavior: contain; margin-bottom: env(safe-area-inset-bottom, 0px); }
+.grid { display: flex; position: relative; width: max-content; min-width: 100%; }
+.times { position: sticky; left: 0; z-index: 3; width: 52px; flex: none; background: var(--bg); border-right: 1px solid var(--line); }
+.corner { position: sticky; top: 0; z-index: 4; background: var(--bg); border-bottom: 1px solid var(--line); }
+.time { padding-right: 8px; text-align: right; font-size: 11px; color: #B8B1A7; transform: translateY(-7px); box-sizing: border-box; }
+.time.first { transform: translateY(2px); }
+.time.half { color: var(--muted-2); }
+.col { flex: none; border-right: 1px solid var(--line); }
+.col-head { position: sticky; top: 0; z-index: 2; width: 100%; padding: 4px 8px; border: 0; border-bottom: 1px solid var(--line); background: var(--bg); color: var(--fg); text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box; }
+.col-head:hover .col-name { color: var(--accent); }
+.col-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tags { display: flex; gap: 4px; overflow: hidden; }
+.tag { font-size: 10.5px; font-weight: 600; color: #C9C2B8; background: var(--line); border-radius: 6px; padding: 2px 6px; white-space: nowrap; }
+.col-body { position: relative; }
+.lesson { position: absolute; left: 3px; right: 3px; border-radius: 8px; padding: 5px 7px; background: var(--accent-bg); border: 1px solid var(--accent-line); overflow: hidden; display: flex; flex-direction: column; gap: 1px; box-sizing: border-box; }
+.lesson.group { background: #26231F; border-color: var(--line-3); }
+.lesson.compact { padding: 3px 7px; }
+.lesson.tiny { padding: 0; background: var(--accent-solid); border-color: var(--accent); }
+.lesson.tiny.group { background: var(--group); border-color: #4A4540; }
+.lesson div { line-height: 1.2; overflow-wrap: anywhere; }
+.lesson .one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-time { font-size: 10.5px; color: #B8B1A7; }
+.l-teacher { font-size: 12px; font-weight: 700; }
+.l-student { font-size: 12px; color: var(--fg-2); }
+.l-subj { font-size: 10.5px; font-weight: 700; color: var(--accent); }
+.lesson.group .l-subj { color: var(--fg-2); }
+.now { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); z-index: 1; pointer-events: none; }
+.closed { padding: 48px 16px; text-align: center; color: var(--muted); font-size: 15px; }
+
+/* Вход */
+.auth { padding-block: 16px 32px; gap: 0; }
+.auth h1 { margin: 8px 0 0; font-size: 28px; font-weight: 700; line-height: 1.2; }
+.auth p.lead { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); max-width: 40ch; }
+.auth form { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; flex: 1; }
+.spacer { flex: 1; }
+.foot-note { margin: 16px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted-2); text-align: center; }
+.link-btn { background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 8px; }
+
+/* Моё расписание */
+.me-head { display: flex; align-items: center; gap: 12px; padding-block: 16px 12px; }
+.avatar { width: 44px; height: 44px; flex: none; border-radius: 22px; background: var(--line-2); color: var(--fg); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.subs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.sub { flex: 1 0 200px; max-width: 320px; box-sizing: border-box; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 8px; }
+.sub .k { font-size: 12px; font-weight: 600; color: var(--muted); }
+.sub .v { font-size: 15px; font-weight: 700; }
+.bar { height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.bar i.low { background: #E5484D; }
+.sub .d { font-size: 11px; color: var(--muted-2); }
+.me-controls { display: flex; align-items: center; gap: 8px; padding-block: 16px 8px; }
+.me-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 24px; display: flex; flex-direction: column; gap: 4px; }
+.summary { font-size: 12px; color: var(--muted-2); padding-block: 4px 8px; }
+.dgroup { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.dlabel { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #C9C2B8; }
+.dlabel .badge { font-size: 11px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 6px; padding: 2px 6px; }
+.item { display: flex; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-2); }
+.item.next { background: var(--accent-bg); border-color: var(--accent); }
+.item .t { width: 52px; flex: none; display: flex; flex-direction: column; gap: 2px; }
+.item .t b { font-size: 16px; }
+.item .t span { font-size: 12px; color: var(--muted-2); }
+.item .c { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.item .s { font-size: 14px; font-weight: 700; color: var(--accent); }
+.item.grp .s { color: var(--fg-2); }
+.item .p { font-size: 12px; color: var(--muted); }
+
+/* Админка */
+.admin { padding-block: 24px 32px; overflow-y: auto; gap: 24px; }
+.admin-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.panels { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.panel { box-sizing: border-box; padding: 24px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 16px; }
+.panel.form { flex: 1 1 340px; max-width: 460px; }
+.panel.list { flex: 999 1 560px; min-width: 0; }
+.panel h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; min-width: 0; height: 48px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-3); background: var(--bg); color: var(--fg); font-size: 16px; font-weight: 600; }
+.btn-sm { height: 48px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--pressed); color: var(--fg); font-size: 14px; font-weight: 700; }
+.btn-sm.primary { background: var(--accent); color: var(--accent-ink); }
+.found { padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 6px; }
+.found .k { font-size: 12px; font-weight: 600; color: var(--muted-2); }
+.found .n { font-size: 17px; font-weight: 700; }
+.found .m { font-size: 13px; color: #C9C2B8; }
+.linkbox { min-height: 48px; box-sizing: border-box; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent); background: var(--bg); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; user-select: all; }
+.qr { align-self: flex-start; padding: 12px; background: #FFFFFF; border-radius: 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px; color: var(--muted-2); font-weight: 600; }
+td { padding: 12px 8px; border-top: 1px solid var(--line-2); color: #C9C2B8; }
+td.name { color: var(--fg); font-weight: 700; }
+td.act { text-align: right; white-space: nowrap; }
+.st { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+.st.ok { background: var(--ok-bg); color: var(--ok); }
+.st.wait { background: var(--accent-bg); color: var(--warn); }
+.st.bad { background: var(--bad-bg); color: var(--bad); }
+.mini { height: 32px; padding: 0 10px; border: 1px solid var(--line-3); border-radius: 8px; background: var(--raised); color: var(--fg-2); font-size: 12px; font-weight: 600; }
+.mini.ghost { background: transparent; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--pressed); color: var(--fg); font-size: 13px; font-weight: 600; z-index: 20; }
+.demo-tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted-2); border: 1px solid var(--line-3); border-radius: 6px; padding: 2px 6px; }
+
+@media (prefers-reduced-motion: reduce) { .loader i { transition: none; } }
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;height:100%}</style>
+</head>
+<body>
+
+
+<!-- Заставка -->
+<section id="v-splash" class="view splash narrow">
+  <div class="splash-center">
+    <div class="logo lg">АС</div>
+    <div><div class="eyebrow">Музыкальная школа</div><h1>Анны Суворовой</h1></div>
+    <div style="font-size:16px;color:#C9C2B8">Добро пожаловать</div>
+  </div>
+  <div class="splash-foot">
+    <div id="splash-loading" style="display:flex;flex-direction:column;gap:10px;align-items:center">
+      <div class="loader"><i id="loader-bar"></i></div>
+      <div style="font-size:12px;color:var(--muted-2)">Загружаем расписание…</div>
+    </div>
+    <div id="splash-ready" hidden style="width:100%;display:flex;flex-direction:column;gap:12px">
+      <a class="btn primary" href="#school">Открыть расписание</a>
+      <a class="btn secondary" href="#me" id="splash-login">Войти — моё расписание</a>
+    </div>
+  </div>
+</section>
+
+<!-- Режим 1: расписание школы -->
+<section id="v-school" class="view" hidden>
+  <header class="top">
+    <div class="logo">АС</div>
+    <div class="brand"><div class="brand-name">Основа</div><div class="brand-sub">Музыкальная школа Анны Суворовой</div></div>
+    <a class="pill-btn" href="#me" id="me-link" aria-label="Моё расписание">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span id="me-link-txt">Войти</span>
+    </a>
+    <button class="icon-btn" id="refresh" aria-label="Обновить расписание">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
+    </button>
+  </header>
+  <nav class="chips" id="filials" aria-label="Филиалы"></nav>
+  <div class="days" id="days" aria-label="Дата"></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Шаг сетки"><button data-step="30" class="on">½ ч</button><button data-step="60">1 ч</button></div>
+    <div class="zoom">
+      <span class="zoom-level" id="zoom-level"></span>
+      <button class="icon-btn" id="zoom-out" aria-label="Уменьшить">−</button>
+      <button class="icon-btn" id="zoom-in" aria-label="Увеличить">+</button>
+    </div>
+  </div>
+  <div class="status"><span class="dot"></span><span class="txt" id="status-txt"></span><button class="focus-chip" id="focus-chip" hidden></button></div>
+  <div class="grid-wrap" id="grid-wrap"><div class="grid" id="grid"></div></div>
+</section>
+
+<!-- Вход (ученик и администратор) -->
+<section id="v-login" class="view auth narrow" hidden>
+  <a class="back" href="#school"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Расписание школы</a>
+  <div style="margin-top:32px;display:flex;flex-direction:column;gap:12px">
+    <div class="logo md">АС</div>
+    <h1 id="login-title">Моё расписание</h1>
+    <p class="lead" id="login-lead">Вход по номеру телефона и паролю. Ссылку для создания пароля присылает администратор школы.</p>
+  </div>
+  <form id="login-form" novalidate>
+    <div class="field"><label for="login-user">Телефон или логин</label><input id="login-user" autocomplete="username" placeholder="+7 900 000-00-00"></div>
+    <div class="field"><label for="login-pass">Пароль</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="err" id="login-err" role="alert"></div>
+    <div class="hint">Демо-доступ: логин <b>admin</b>, пароль <b>admin</b></div>
+    <div class="spacer"></div>
+    <button class="btn primary" type="submit">Войти</button>
+  </form>
+  <p class="foot-note" id="login-foot">Нет доступа или забыли пароль — администратор филиала пришлёт новую ссылку.</p>
+  <button class="link-btn" id="to-admin" type="button" style="align-self:center">Вход для администратора</button>
+</section>
+
+<!-- Ссылка-приглашение -->
+<section id="v-invite" class="view auth narrow" hidden>
+  <div style="margin-top:40px;display:flex;flex-direction:column;gap:12px">
+    <div class="logo md">АС</div>
+    <h1 id="inv-title">Здравствуйте!</h1>
+    <p class="lead">Придумайте пароль — дальше вход по номеру телефона и этому паролю.</p>
+  </div>
+  <div class="found" style="margin-top:24px"><div class="k">Ученик</div><div class="n" id="inv-name"></div><div class="m" id="inv-meta"></div></div>
+  <form id="inv-form" novalidate>
+    <div class="field"><label for="inv-p1">Новый пароль</label><input id="inv-p1" type="password" autocomplete="new-password" placeholder="не короче 8 символов"></div>
+    <div class="field"><label for="inv-p2">Повторите пароль</label><input id="inv-p2" type="password" autocomplete="new-password"></div>
+    <div class="err" id="inv-err" role="alert"></div>
+    <div class="spacer"></div>
+    <button class="btn primary" type="submit">Сохранить и войти</button>
+  </form>
+  <p class="foot-note">Ссылка одноразовая, действует 7 дней.</p>
+</section>
+
+<!-- Режим 2: моё расписание -->
+<section id="v-me" class="view narrow" hidden style="max-width:720px">
+  <div class="me-head">
+    <div class="avatar" id="me-av">МК</div>
+    <div class="brand"><div class="brand-name" id="me-name">Мария Ковалёва</div><div class="brand-sub" id="me-fil">Парк культуры</div></div>
+    <button class="icon-btn" id="logout" aria-label="Выйти" style="color:#C9C2B8">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
+    </button>
+  </div>
+  <div class="subs" id="subs"></div>
+  <div class="me-controls">
+    <div class="seg" role="group" aria-label="Период"><button data-range="week" class="on">Неделя</button><button data-range="month">Месяц</button></div>
+    <a class="back" href="#school" style="margin-left:auto;align-self:center">Расписание школы<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></a>
+  </div>
+  <div class="me-list" id="me-list"></div>
+</section>
+
+<!-- Админка -->
+<section id="v-admin" class="view admin" hidden style="max-width:1200px">
+  <div class="admin-head">
+    <div class="logo">АС</div>
+    <div style="flex:1;min-width:200px"><div style="font-size:20px;font-weight:700">Доступ учеников</div><div style="font-size:13px;color:var(--muted)">Администратор школы</div></div>
+    <a class="back" href="#school" style="align-self:center">Расписание школы</a>
+    <button class="mini" id="admin-logout" type="button">Выйти</button>
+  </div>
+  <div class="panels">
+    <div class="panel form">
+      <h2>Выдать доступ</h2>
+      <form class="field" id="find-form" novalidate>
+        <label for="crm-id">ID ученика в «Мой класс»</label>
+        <div class="row"><input id="crm-id" inputmode="numeric" placeholder="например, 184523"><button class="btn-sm" type="submit">Найти</button></div>
+        <div class="err" id="find-err" role="alert"></div>
+      </form>
+      <div class="hint">Демо: ID <b>184523</b>, <b>187340</b>, <b>190118</b></div>
+      <div class="found" id="found" hidden><div class="k">Найдено в CRM</div><div class="n" id="f-name"></div><div class="m" id="f-meta"></div><div class="m" id="f-groups"></div></div>
+      <button class="btn-sm primary" id="create" hidden>Создать доступ</button>
+      <div id="created" hidden style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--muted)">Ссылка для создания пароля · 7 дней. Отправьте ученику любым удобным способом или дайте отсканировать QR-код.</div>
+        <div class="linkbox" id="inv-link"></div>
+        <div class="row"><button class="btn-sm" id="copy" type="button" style="flex:1">Скопировать</button><a class="btn-sm primary" id="open-inv" href="#invite" style="flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none">Открыть как ученик</a></div>
+        <div class="qr" id="qr" aria-label="QR-код ссылки"></div>
+      </div>
+    </div>
+    <div class="panel list">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h2 style="flex:1">Выданные доступы</h2><span class="demo-tag">демо-данные</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Ученик</th><th>ID CRM</th><th>Филиал</th><th>Статус</th><th style="text-align:right">Действия</th></tr></thead><tbody id="acc"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+// ---------- Демо-данные (в рабочей версии — из своего API, который читает «Мой класс») ----------
+const FILIALS = ['Парк культуры', 'Филиал 2', 'Филиал 3', 'Филиал 4'];
+const ROOMS = [
+  { id: 'classic', name: 'Классика', tags: ['скрипка'] }, { id: 'country', name: 'Кантри', tags: [] },
+  { id: 'chanson', name: 'Шансонье', tags: [] }, { id: 'blues', name: 'Блюз', tags: [] },
+  { id: 'estrada', name: 'Эстрада', tags: ['вокал'] }, { id: 'funk', name: 'Фанк', tags: ['барабаны'] },
+  { id: 'hall', name: 'Основа-холл', tags: ['рояль', 'барабаны', 'зал'] },
+];
+// [класс, начало, мин, педагог, ученик|null(группа), группа, дни недели (1=пн..6=сб) или null]
+const BASE = [
+  ['classic', '10:00', 60, 'Анна Белова', 'Мария Ковалёва', 'Скрипка МШ2', [3, 6]],
+  ['classic', '11:00', 60, 'Анна Белова', 'Дмитрий Зайцев', 'Скрипка Top МШ2'],
+  ['classic', '13:30', 30, 'Анна Белова', 'Алина Фёдорова', 'Скрипка МШ2'],
+  ['classic', '16:00', 60, 'Анна Белова', 'Илья Морозов', 'Скрипка МШ2'],
+  ['classic', '18:00', 60, 'Анна Белова', 'Светлана Ветрова', 'Скрипка Top МШ2'],
+  ['country', '12:00', 60, 'Сергей Миронов', 'Артём Егоров', 'Гитара МШ2'],
+  ['country', '15:00', 60, 'Сергей Миронов', 'Ксения Лаптева', 'Гитара МШ2'],
+  ['country', '19:00', 60, 'Сергей Миронов', 'Никита Громов', 'Гитара МШ2'],
+  ['chanson', '10:30', 30, 'Марина Лебедева', 'Вера Тихонова', 'Вокал МШ2'],
+  ['chanson', '11:00', 60, 'Марина Лебедева', 'Олег Руденко', 'Вокал МШ2'],
+  ['chanson', '17:00', 60, 'Марина Лебедева', 'Мария Ковалёва', 'Вокал МШ2', [1, 4]],
+  ['chanson', '20:00', 60, 'Марина Лебедева', 'Дмитрий Зайцев', 'Вокал МШ2'],
+  ['blues', '14:00', 60, 'Павел Орлов', 'Никита Громов', 'Фортепиано МШ2'],
+  ['blues', '15:00', 30, 'Павел Орлов', 'Алина Фёдорова', 'Фортепиано МШ2'],
+  ['blues', '18:30', 60, 'Елена Соколова', 'Артём Егоров', 'Фортепиано МШ2'],
+  ['estrada', '10:00', 60, 'Елена Соколова', 'Ксения Лаптева', 'Фортепиано МШ2'],
+  ['estrada', '12:30', 60, 'Елена Соколова', 'Илья Морозов', 'Фортепиано МШ2'],
+  ['estrada', '16:30', 30, 'Елена Соколова', 'Вера Тихонова', 'Фортепиано МШ2'],
+  ['estrada', '19:30', 60, 'Марина Лебедева', 'Светлана Ветрова', 'Вокал МШ2'],
+  ['funk', '13:00', 60, 'Игорь Кравцов', 'Олег Руденко', 'Барабаны МШ2'],
+  ['funk', '17:00', 60, 'Игорь Кравцов', 'Никита Громов', 'Барабаны МШ2'],
+  ['funk', '20:00', 30, 'Игорь Кравцов', 'Дмитрий Зайцев', 'Барабаны МШ2'],
+  ['hall', '11:00', 60, 'Павел Орлов', 'Тимур Галеев', 'Фортепиано МШ2'],
+  ['hall', '18:00', 120, 'Павел Орлов', null, 'Оркестр · сводная группа', [6]],
+];
+const ME = { name: 'Мария Ковалёва', initials: 'МК', filial: 0 };
+const DAY_START = 600, DAY_END = 1260;
+const LEVELS = [ { w: 26, v: 0.32, t: 'загрузка' }, { w: 40, v: 0.5, t: 'загрузка' }, { w: 64, v: 0.75, t: 'сжато' }, { w: 96, v: 1, t: '' }, { w: 124, v: 1, t: '' }, { w: 164, v: 1.2, t: 'крупно' } ];
+const WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const WDF = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+const MON = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+const today = new Date(); today.setHours(0, 0, 0, 0);
+const dayAt = (i) => { const d = new Date(today); d.setDate(d.getDate() + i); return d; };
+const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const sur = (n) => (n || '').split(' ').slice(-1)[0];
+
+function lessonsFor(filial, di) {
+  const d = dayAt(di), wd = d.getDay();
+  if (wd === 0) return [];
+  const seed = filial * 3 + di * 2;
+  return BASE.filter((l, i) => {
+    if (l[6]) return filial === 0 ? l[6].includes(wd) : (l[6].includes(wd) && l[4] === null);
+    return (i + seed) % 5 !== 4;
+  }).map((l) => ({ room: l[0], start: l[1], end: fmt(toMin(l[1]) + l[2]), teacher: l[3], student: l[4], subj: l[5], group: l[4] === null }));
+}
+
+// ---------- Состояние ----------
+const store = { get(k, d) { try { const v = localStorage.getItem('osnova.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('osnova.' + k, JSON.stringify(v)); } catch {} } };
+const S = { filial: store.get('filial', 0), day: 0, step: store.get('step', 30), zoom: store.get('zoom', 4), focus: null, range: 'week', updated: Date.now(),
+  user: store.get('user', null), admin: store.get('admin', false), loginFor: 'me', invite: null,
+  accounts: store.get('accounts', [
+    { name: 'Илья Морозов', id: '179010', filial: 'Парк культуры', st: 'ok' },
+    { name: 'Ксения Лаптева', id: '181277', filial: 'Филиал 2', st: 'ok' },
+    { name: 'Артём Егоров', id: '182904', filial: 'Парк культуры', st: 'wait' },
+    { name: 'Олег Руденко', id: '176455', filial: 'Филиал 3', st: 'bad' },
+  ]) };
+const CRM = {
+  '184523': { name: 'Мария Ковалёва', phone: '+7 (912) 345-67-12', filial: 'Парк культуры', groups: 'Скрипка МШ2, Вокал МШ2' },
+  '187340': { name: 'Тимур Галеев', phone: '+7 (916) 220-41-08', filial: 'Парк культуры', groups: 'Фортепиано МШ2' },
+  '190118': { name: 'Вера Тихонова', phone: '+7 (903) 771-02-55', filial: 'Филиал 2', groups: 'Вокал МШ2' },
+};
+
+const $ = (s) => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 2200); }
+
+// ---------- Маршруты ----------
+const VIEWS = ['splash', 'school', 'login', 'invite', 'me', 'admin'];
+function route() {
+  let v = (location.hash || '').slice(1);
+  if (!VIEWS.includes(v)) v = 'splash';
+  if (v === 'me' && !S.user) { S.loginFor = 'me'; v = 'login'; }
+  if (v === 'admin' && !S.admin) { S.loginFor = 'admin'; v = 'login'; }
+  if (v === 'invite' && !S.invite) v = 'admin';
+  if (v === 'admin' && !S.admin) { S.loginFor = 'admin'; v = 'login'; }
+  for (const n of VIEWS) $('#v-' + n).hidden = n !== v;
+  ({ school: renderSchool, login: renderLogin, me: renderMe, admin: renderAdmin, invite: renderInvite, splash: () => {} })[v]();
+}
+window.addEventListener('hashchange', route);
+
+// ---------- Заставка ----------
+function splash() {
+  requestAnimationFrame(() => { $('#loader-bar').style.width = '100%'; });
+  setTimeout(() => { $('#splash-loading').hidden = true; $('#splash-ready').hidden = false; }, 1100);
+}
+
+// ---------- Режим 1 ----------
+function renderSchool() {
+  $('#me-link-txt').textContent = S.user ? 'Моё' : 'Войти';
+  const fil = $('#filials'); fil.replaceChildren();
+  FILIALS.forEach((n, i) => { const b = el('button', 'chip' + (i === S.filial ? ' on' : ''), n); b.onclick = () => { S.filial = i; S.focus = null; store.set('filial', i); renderSchool(); }; fil.append(b); });
+  const days = $('#days'); days.replaceChildren();
+  for (let i = 0; i < 30; i++) {
+    const d = dayAt(i), b = el('button', 'day' + (i === S.day ? ' on' : ''));
+    const sm = el('small', d.getDay() === 0 ? 'sun' : '', i === 0 ? 'сег' : i === 1 ? 'завт' : WD[d.getDay()]);
+    b.append(sm, el('b', 'num', String(d.getDate())));
+    b.setAttribute('aria-label', `${d.getDate()} ${MON[d.getMonth()]}, ${WDF[d.getDay()].toLowerCase()}`);
+    b.onclick = () => { S.day = i; S.focus = null; renderSchool(); };
+    days.append(b);
+  }
+  document.querySelectorAll('[data-step]').forEach((b) => b.classList.toggle('on', Number(b.dataset.step) === S.step));
+  renderGrid();
+}
+
+function statusText() {
+  const d = dayAt(S.day);
+  const lbl = (S.day === 0 ? 'Сегодня, ' : S.day === 1 ? 'Завтра, ' : '') + `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+  const min = Math.round((Date.now() - S.updated) / 60000);
+  return `${min < 1 ? 'Обновлено только что' : `Обновлено ${min} мин назад`} · ${lbl}`;
+}
+
+function renderGrid() {
+  $('#status-txt').textContent = statusText();
+  const lv = LEVELS[S.zoom];
+  $('#zoom-level').textContent = S.focus ? '' : lv.t;
+  const grid = $('#grid'); grid.replaceChildren();
+  const all = lessonsFor(S.filial, S.day);
+  const chip = $('#focus-chip');
+  const rooms = S.focus ? ROOMS.filter((r) => r.id === S.focus) : ROOMS;
+  chip.hidden = !S.focus;
+  if (S.focus) chip.textContent = `${rooms[0].name} ✕`;
+  if (dayAt(S.day).getDay() === 0) { grid.append(el('div', 'closed', 'Воскресенье — выходной, занятий нет')); return; }
+
+  const tiny = !S.focus && S.zoom <= 1;
+  const ppm = (S.step === 30 ? 1.4 : 0.9) * (S.focus ? 1 : lv.v);
+  const step = tiny ? 60 : S.step;
+  const slot = Math.round(step * ppm);
+  const gridH = Math.round((DAY_END - DAY_START) * ppm);
+  const headH = tiny ? 32 : 56;
+  const avail = $('#grid-wrap').clientWidth - 54;
+  const fit = Math.floor(avail / rooms.length) - 1;
+  const colW = S.focus ? Math.max(200, avail) : (S.zoom >= 3 ? Math.max(lv.w, fit) : lv.w);
+
+  const times = el('div', 'times');
+  const corner = el('div', 'corner'); corner.style.height = headH + 'px'; times.append(corner);
+  for (let m = DAY_START; m <= DAY_END; m += step) {
+    const t = el('div', 'time num' + (m === DAY_START ? ' first' : '') + (m % 60 ? ' half' : ''), fmt(m));
+    t.style.height = (m === DAY_END ? 16 : slot) + 'px'; times.append(t);
+  }
+  grid.append(times);
+
+  const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const r of rooms) {
+    const col = el('div', 'col'); col.style.width = colW + 'px';
+    const head = el('button', 'col-head'); head.style.height = headH + 'px';
+    head.setAttribute('aria-label', S.focus ? 'Показать все классы' : `Показать только класс ${r.name}`);
+    head.append(el('div', 'col-name', tiny ? r.name.slice(0, 2) : r.name));
+    if (!tiny && r.tags.length) { const tg = el('div', 'tags'); r.tags.forEach((t) => tg.append(el('div', 'tag', t))); head.append(tg); }
+    head.onclick = () => { S.focus = S.focus ? null : r.id; renderGrid(); };
+    col.append(head);
+    const body = el('div', 'col-body'); body.style.height = gridH + 'px';
+    body.style.backgroundImage = `repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent ${slot}px)`;
+    for (const l of all.filter((x) => x.room === r.id)) {
+      const st = toMin(l.start), en = toMin(l.end);
+      const h = Math.max(4, Math.round((en - st) * ppm) - (tiny ? 2 : 3));
+      const card = el('div', 'lesson' + (l.group ? ' group' : '') + (tiny ? ' tiny' : h < 52 ? ' compact' : ''));
+      card.style.top = Math.round((st - DAY_START) * ppm) + 1 + 'px'; card.style.height = h + 'px';
+      card.title = `${l.start}–${l.end} · ${l.teacher}${l.student ? ' · ' + l.student : ''} · ${l.subj}`;
+      if (!tiny) {
+        const who = l.student || l.subj;
+        if (h >= 76) card.append(el('div', 'l-time num', `${l.start}–${l.end}`), el('div', 'l-teacher', l.teacher), el('div', 'l-student', l.student || ''), el('div', 'l-subj', l.subj));
+        else if (h >= 52) card.append(el('div', 'l-teacher', l.teacher), el('div', 'l-student', who));
+        else if (h >= 34) card.append(el('div', 'l-teacher one', l.teacher), el('div', 'l-student one', who));
+        else card.append(el('div', 'l-teacher one', `${sur(l.teacher)} · ${l.group ? l.subj : sur(l.student)}`));
+      }
+      body.append(card);
+    }
+    if (S.day === 0 && nowMin >= DAY_START && nowMin <= DAY_END) { const ln = el('div', 'now'); ln.style.top = Math.round((nowMin - DAY_START) * ppm) + 'px'; body.append(ln); }
+    col.append(body); grid.append(col);
+  }
+}
+
+function setZoom(z) { const n = Math.max(0, Math.min(LEVELS.length - 1, z)); if (n === S.zoom) return; S.zoom = n; S.focus = null; store.set('zoom', n); renderGrid(); }
+
+function bindSchool() {
+  document.querySelectorAll('[data-step]').forEach((b) => b.onclick = () => { S.step = Number(b.dataset.step); store.set('step', S.step); renderSchool(); });
+  $('#zoom-in').onclick = () => setZoom(S.zoom + 1);
+  $('#zoom-out').onclick = () => setZoom(S.zoom - 1);
+  $('#focus-chip').onclick = () => { S.focus = null; renderGrid(); };
+  $('#refresh').onclick = () => { S.updated = Date.now(); renderGrid(); toast('Расписание обновлено'); };
+  const wrap = $('#grid-wrap'); let d0 = null, z0 = 0;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  wrap.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e.touches); z0 = S.zoom; } }, { passive: true });
+  wrap.addEventListener('touchmove', (e) => { if (e.touches.length !== 2 || !d0) return; e.preventDefault(); setZoom(z0 + Math.round(Math.log2(dist(e.touches) / d0) * 2)); }, { passive: false });
+  wrap.addEventListener('touchend', () => { d0 = null; });
+  wrap.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); setZoom(S.zoom + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!$('#v-school').hidden) renderGrid(); }, 120); });
+  setInterval(() => { if (!$('#v-school').hidden) $('#status-txt').textContent = statusText(); }, 30000);
+}
+
+// ---------- Вход ----------
+function renderLogin() {
+  const adm = S.loginFor === 'admin';
+  $('#login-title').textContent = adm ? 'Вход администратора' : 'Моё расписание';
+  $('#login-lead').textContent = adm ? 'Выдача доступа ученикам по ID из «Мой класс».' : 'Вход по номеру телефона и паролю. Ссылку для создания пароля присылает администратор школы.';
+  $('#login-foot').hidden = adm;
+  $('#to-admin').textContent = adm ? 'Вход для ученика' : 'Вход для администратора';
+  $('#login-err').textContent = '';
+}
+$('#login-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const u = $('#login-user').value.trim(), p = $('#login-pass').value;
+  if (u !== 'admin' || p !== 'admin') { $('#login-err').textContent = 'Неверный логин или пароль. В демо: admin / admin.'; return; }
+  $('#login-pass').value = '';
+  if (S.loginFor === 'admin') { S.admin = true; store.set('admin', true); location.hash = 'admin'; }
+  else { S.user = ME; store.set('user', ME); location.hash = 'me'; }
+  route();
+});
+$('#to-admin').onclick = () => { S.loginFor = S.loginFor === 'admin' ? 'me' : 'admin'; location.hash = S.loginFor === 'admin' ? 'admin' : 'me'; route(); };
+
+// ---------- Режим 2 ----------
+function renderMe() {
+  const u = S.user || ME;
+  $('#me-name').textContent = u.name; $('#me-av').textContent = u.initials; $('#me-fil').textContent = FILIALS[u.filial];
+  const subs = $('#subs'); subs.replaceChildren();
+  const end = dayAt(33);
+  [['Скрипка', 7, 12, `действует до ${end.getDate()} ${MON[end.getMonth()]}`], ['Вокал', 2, 8, 'скоро закончится — продлите у администратора']].forEach(([n, left, tot, note]) => {
+    const c = el('div', 'sub'); c.append(el('div', 'k', 'Абонемент · ' + n), el('div', 'v num', `Осталось ${left} из ${tot}`));
+    const bar = el('div', 'bar'), i = el('i', left / tot <= 0.25 ? 'low' : ''); i.style.width = Math.round(left / tot * 100) + '%'; bar.append(i);
+    c.append(bar, el('div', 'd', note)); subs.append(c);
+  });
+  document.querySelectorAll('[data-range]').forEach((b) => b.classList.toggle('on', b.dataset.range === S.range));
+  const list = $('#me-list'); list.replaceChildren();
+  const span = S.range === 'week' ? 7 : 30;
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  let total = 0, first = true;
+  const groups = [];
+  for (let i = 0; i < span; i++) {
+    const items = lessonsFor(u.filial, i).filter((l) => l.student === u.name || (l.group && dayAt(i).getDay() === 6))
+      .filter((l) => i > 0 || toMin(l.end) > nowMin).sort((a, b) => toMin(a.start) - toMin(b.start));
+    if (items.length) groups.push([i, items]);
+  }
+  list.append(el('div', 'summary', `${groups.reduce((s, g) => s + g[1].length, 0)} занятий ${S.range === 'week' ? 'за 7 дней' : 'за 30 дней'}`));
+  for (const [i, items] of groups) {
+    const d = dayAt(i), g = el('div', 'dgroup');
+    const lab = el('div', 'dlabel', `${WD[d.getDay()][0].toUpperCase() + WD[d.getDay()].slice(1)}, ${d.getDate()} ${MON[d.getMonth()]}`);
+    if (i === 0) lab.append(el('span', 'badge', 'сегодня')); else if (i === 1) lab.append(el('span', 'badge', 'завтра'));
+    g.append(lab);
+    for (const l of items) {
+      total++;
+      const it = el('div', 'item' + (first ? ' next' : '') + (l.group ? ' grp' : '')); first = false;
+      const t = el('div', 't'); t.append(el('b', 'num', l.start), el('span', 'num', l.end));
+      const c = el('div', 'c'); c.append(el('div', 's', l.subj), el('div', '', l.teacher), el('div', 'p', `${ROOMS.find((r) => r.id === l.room).name} · ${FILIALS[u.filial]}`));
+      it.append(t, c); g.append(it);
+    }
+    list.append(g);
+  }
+  if (!groups.length) list.append(el('div', 'closed', 'Занятий в этом периоде нет'));
+}
+document.querySelectorAll('[data-range]').forEach((b) => b.onclick = () => { S.range = b.dataset.range; renderMe(); });
+$('#logout').onclick = () => { S.user = null; store.set('user', null); location.hash = 'splash'; route(); };
+
+// ---------- Админка ----------
+let found = null;
+function renderAccounts() {
+  const tb = $('#acc'); tb.replaceChildren();
+  const label = { ok: 'Активен', wait: 'Ссылка выдана', bad: 'Ссылка истекла', off: 'Отключён' };
+  for (const a of S.accounts) {
+    const tr = el('tr');
+    const st = el('span', 'st ' + (a.st === 'off' ? 'bad' : a.st), label[a.st]);
+    const tdSt = el('td'); tdSt.append(st);
+    const act = el('td', 'act');
+    const nb = el('button', 'mini', 'Новая ссылка'); nb.onclick = () => { a.st = 'wait'; save(); renderAccounts(); toast(`Новая ссылка для: ${a.name}`); };
+    const off = el('button', 'mini ghost', a.st === 'off' ? 'Включить' : 'Отключить'); off.style.marginLeft = '6px';
+    off.onclick = () => { a.st = a.st === 'off' ? 'ok' : 'off'; save(); renderAccounts(); };
+    act.append(nb, off);
+    tr.append(el('td', 'name', a.name), el('td', 'num', a.id), el('td', '', a.filial), tdSt, act); tb.append(tr);
+  }
+}
+const save = () => store.set('accounts', S.accounts);
+function renderAdmin() { renderAccounts(); }
+$('#find-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const id = $('#crm-id').value.trim();
+  $('#created').hidden = true;
+  found = CRM[id] ? { id, ...CRM[id] } : null;
+  $('#found').hidden = !found; $('#create').hidden = !found;
+  $('#find-err').textContent = found ? '' : (id ? `Ученик с ID ${id} не найден в «Мой класс»` : 'Введите ID ученика');
+  if (found) { $('#f-name').textContent = found.name; $('#f-meta').textContent = `${found.phone} · ${found.filial}`; $('#f-groups').textContent = 'Группы: ' + found.groups; }
+});
+$('#create').onclick = () => {
+  if (!found) return;
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+  const link = `https://raspisanie.[домен-школы]/i/${token}`;
+  $('#inv-link').textContent = link;
+  const qr = $('#qr'); qr.replaceChildren();
+  try { new QRCode(qr, { text: link, width: 148, height: 148, colorDark: '#0B0B0C', colorLight: '#FFFFFF' }); } catch { qr.hidden = true; }
+  $('#create').hidden = true; $('#created').hidden = false;
+  const ex = S.accounts.find((a) => a.id === found.id);
+  if (ex) ex.st = 'wait'; else S.accounts.unshift({ name: found.name, id: found.id, filial: found.filial, st: 'wait' });
+  save(); renderAccounts();
+  S.invite = found;
+};
+$('#copy').onclick = () => {
+  const txt = $('#inv-link').textContent;
+  navigator.clipboard.writeText(txt).then(() => toast('Ссылка скопирована'), () => {
+    const r = document.createRange(); r.selectNodeContents($('#inv-link')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Выделено — скопируйте вручную');
+  });
+};
+$('#admin-logout').onclick = () => { S.admin = false; store.set('admin', false); location.hash = 'school'; route(); };
+
+// ---------- Приглашение ----------
+function renderInvite() {
+  const f = S.invite;
+  $('#inv-title').textContent = `Здравствуйте, ${f.name.split(' ')[0]}!`;
+  $('#inv-name').textContent = f.name;
+  $('#inv-meta').textContent = `${f.filial} · ${f.phone.replace(/\d(?=[\d\s()-]{6})/g, '•')}`;
+  $('#inv-err').textContent = '';
+}
+$('#inv-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const a = $('#inv-p1').value, b = $('#inv-p2').value;
+  if (a.length < 8) { $('#inv-err').textContent = 'Пароль должен быть не короче 8 символов'; return; }
+  if (a !== b) { $('#inv-err').textContent = 'Пароли не совпадают'; return; }
+  const acc = S.accounts.find((x) => x.id === S.invite.id); if (acc) { acc.st = 'ok'; save(); }
+  const parts = S.invite.name.split(' ');
+  S.user = { name: S.invite.name, initials: parts.map((p) => p[0]).join(''), filial: Math.max(0, FILIALS.indexOf(S.invite.filial)) };
+  store.set('user', S.user);
+  $('#inv-p1').value = ''; $('#inv-p2').value = '';
+  location.hash = 'me'; route();
+});
+
+bindSchool();
+splash();
+route();
+</script>
+
+</body>
+</html>
